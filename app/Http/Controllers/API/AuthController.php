@@ -19,10 +19,10 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $validator=Validator::make($request->all(),[
-            'username'=>'required|max:255',
+            'username'=>'required|max:255|unique:users,username',
             'email'=>'required|email|max:255|unique:users,email',
             'password'=>'required|min:8',
-            'confirm_password'=>'required|min:8',
+            'confirm_password'=>'required|min:8|same:password',
         ]);
 
         if($validator->fails())
@@ -41,8 +41,19 @@ class AuthController extends Controller
   
 
 
-            $token=$user->createToken($user->email.'_token')->plainTextToken;
+            if($user->role_as==2) ///nhanvien
+            {
+                $token=$user->createToken($user->email.'_Admintoken',['server:admin'])->plainTextToken;
+            }
+            else if($user->role_as==1) //admin
+            {
+                $token=$user->createToken($user->email.'_Personneltoken',['server:personnel'])->plainTextToken;
 
+            } 
+            else{
+                $token=$user->createToken($user->email.'_token',[''])->plainTextToken;
+            }
+           
             return response()->json([
                 'status'=>200,
                 'username'=>$user->username,
@@ -72,21 +83,25 @@ class AuthController extends Controller
 
 
             $user = User::where('username', $request->username)->first();
-         
-
-            if (! $user || ! Hash::check($request->password, $user->password)) {
+            if(! $user)
+            {
+                $user = User::where('email', $request->username)->first();
+            }
+    
+            if (!$user || ! Hash::check($request->password, $user->password)){
                 return response()->json([
-                    'status'=>401,
+                    'status'=>401, 
                     'message'=>"invalid Credentials"
                 ]);
+                
             }
             else{
 
-                if($user->role_as==2) ///nhanvien
+                if($user->role_as==2) ///admin
                 {
                     $token=$user->createToken($user->email.'_Admintoken',['server:admin'])->plainTextToken;
                 }
-                else if($user->role_as==1) //admin
+                else if($user->role_as==1) //personnel
                 {
                     $token=$user->createToken($user->email.'_Personneltoken',['server:personnel'])->plainTextToken;
 
@@ -114,5 +129,23 @@ class AuthController extends Controller
           'status'=>200,
           "message"=>"Logged Out Successfully"
       ]);
+    }
+
+    public function user()
+
+    {
+        if(auth('sanctum')->check())
+        {
+            $user=auth('sanctum')->user();
+            //   $user=User::where('id', $username)->get();
+              return response()->json([
+                  'status'=>200,
+                  "user"=>$user
+              ]);
+        }
+        else{
+            
+        }
+    
     }
 }
